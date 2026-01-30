@@ -1,4 +1,5 @@
 import requests
+import json
 
 API_URL = "https://blockstream.info/api/"
 SATS_PER_BTC = 100_000_000
@@ -14,14 +15,31 @@ def calculate_tx_flow(transaction, address):
     sum_vin = sum(vin['prevout']['value'] for vin in vins)
     return sum_vout, sum_vin, sum_vout - sum_vin
 
+def process_address_transactions(address):
+    output_transactions = []
+    tx_list = get_transaction_list(address)
+    for transaction in tx_list:
+        txid = transaction['txid']
+        receive, spent, net = calculate_tx_flow(transaction,address)
+        block_time = transaction['status']['block_time'] if transaction['status']['confirmed']== True else None
+        output_transactions.append({
+            "txid": txid,
+            "address": address,
+            "block_time": block_time,
+            "received": receive,
+            "spent":spent,
+            "net":net
+        })
+    return output_transactions
+
 if __name__ == "__main__":
     input_address = "1NDyJtNTjmwk5xPNhjgAMu4HDHigtobu1s"
-    tx_list = get_transaction_list(input_address)
+    processed_txs = process_address_transactions(input_address)
     print(f"--------Transactions in address: {input_address}")
-    for tempTransaction in tx_list:
-        receive, spent, net = calculate_tx_flow(transaction=tempTransaction, address=input_address)
-        print(f"---Transaction Info for txid: {tempTransaction['txid'][:8]}") 
-        print(f"Total received: {receive/SATS_PER_BTC:.8f}BTC")
-        print(f"Total spent: {spent/SATS_PER_BTC:.8f}BTC")
-        print(f"Net value: {net/SATS_PER_BTC:.8f}BTC")
+    for tempTransaction in processed_txs:
+        print(f"---Transaction Info for txid: {tempTransaction['txid'][:8]}")
+        print(f"Block time: {tempTransaction['block_time']}") 
+        print(f"Total received: {tempTransaction['received']/SATS_PER_BTC:.8f}BTC")
+        print(f"Total spent: {tempTransaction['spent']/SATS_PER_BTC:.8f}BTC")
+        print(f"Net value: {tempTransaction['net']/SATS_PER_BTC:.8f}BTC")
         print("\n")
